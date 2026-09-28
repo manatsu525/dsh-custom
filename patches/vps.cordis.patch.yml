@@ -42,6 +42,8 @@
       name: '@local/dsh-vps-owns-host'
     - id: vps-mobile-settings
       name: '@local/dsh-vps-mobile-settings'
+    - id: vps-delete-session
+      name: '@local/dsh-vps-delete-session'
 
 # Keep browser dsh-auth cookie aligned with gateway login (1 year).
 # IMPORTANT: cordis entry patches REPLACE the whole `config` object, so we must
