@@ -1,0 +1,13 @@
+{
+  "name": "dsh-custom",
+  "private": true,
+  "description": "VPS deploy wrapper around official @deepseek-ai/dsh (not a reimplementation)",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.7-rc.2",
+    "@local/dsh-web-search-anon-mcp": "file:./plugins/web-search-anon-mcp",
+    "@local/dsh-client-ui-settings-web-search-anon": "file:./plugins/client-ui-settings-web-search-anon"
+  }
+}

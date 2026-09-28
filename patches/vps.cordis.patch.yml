@@ -1,0 +1,40 @@
+# Applied via: dsh web --patch patches/vps.cordis.patch.yml
+# Core remains official @deepseek-ai/dsh web profile; this only overlays VPS defaults.
+
+# Default workspace parent (Documents). Exact /home/share is best chosen in the UI picker.
+- id: workspace-controller
+  config:
+    documentsDirectory: /home/share
+
+# Slightly tighter bash spill budgets for small RAM
+- id: bash-sandbox
+  config:
+    maxOutputBytes: 32000
+
+# Disable extras that cost RAM on a 512MB box (re-enable in UI/patch if you need them)
+- id: schedule
+  disabled: true
+- id: time-context
+  disabled: true
+- id: session-telemetry-otel
+  disabled: true
+
+# Replace DeepSeek-native web_search with anonymous MCP backends (provider id: anon-mcp)
+- id: web-search-deepseek
+  disabled: true
+- id: ui-settings-web-search
+  disabled: true
+
+- id: web
+  config:
+    searchProvider: anon-mcp
+    fetchProvider: http
+
+# Insert local overlay plugins (package names resolve via node_modules/@local/*)
+- insert:
+    - id: web-search-anon-mcp
+      name: '@local/dsh-web-search-anon-mcp'
+      config:
+        endpoint: parallel
+    - id: ui-settings-web-search-anon
+      name: '@local/dsh-client-ui-settings-web-search-anon'

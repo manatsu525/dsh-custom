@@ -1,0 +1,20 @@
+# Secrets & local runtime
+config.env
+dsh-home/
+data/
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+!config.env.example
+
+# Dependencies / local Node
+node_modules/
+.node/
+.npm/
+
+# Logs / PIDs
+*.log
+*.pid
+.DS_Store
