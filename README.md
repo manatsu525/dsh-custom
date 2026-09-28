@@ -101,41 +101,65 @@ sudo ./scripts/setup-swap.sh   # 512MB 建议
 | 用户管理（仅管理员） | **`/auth/admin`** — 列表 / 创建 / 禁用启用 / 重置密码 / 删除（不可删唯一管理员） |
 | 退出 | 管理页或 `POST /auth/logout`（清除网关会话，并尽量清除 `dsh-auth-*` cookie） |
 
-网关会话 cookie：`dsh_gw_session`（HttpOnly；HTTPS 下 Secure）。
-官方 `dsh-auth-*` cookie 仍由 harness 签发；登录成功后网关用 launch token 换会话，用户不必碰 `?token=`。
+登录后网关会用内部进程 launch token 与官方 dsh 交换浏览器 cookie，**你不必再粘贴 `?token=`**，也看不到原始 process token。
 
-## 配置
+**登录态保留约 1 年**：网关会话 cookie（`dsh-gw-session`）`Max-Age` / `Expires` 默认 **365 天（31536000 秒）**，可用环境变量 `SESSION_MAX_AGE_SEC` 覆盖。官方 `dsh-auth-*` cookie 通过 `patches/vps.cordis.patch.yml` 将 `connection.cookieMaxAgeDays` 设为 **365**（不改 `@deepseek-ai` 源码）。若 cookie 仍缺失/过期而网关会话有效，反代会**静默重新交换** launch token，无需再次输入用户名密码。
 
-复制 `config.env.example` → `config.env`：
+### 共享工作区说明
 
-| 变量 | 含义 |
+- 账号门禁只控制「谁能打开公网入口」  
+- **聊天 / Settings / 会话** 仍跑在**同一个**官方 `dsh web` 进程上  
+- 工作区默认请在 UI 中打开 **`/home/share`**（多用户共享该目录）
+
+### 本地机密（勿提交）
+
+- `config.env` — API key、PUBLIC_HOST 等  
+- `data/cert.pem` / `data/key.pem` — TLS  
+- `data/auth/users.json` — 用户与 scrypt 哈希  
+- `data/auth/session.secret` — 会话 HMAC 密钥  
+- `data/dsh-launch.token` — 进程 launch token（mode 600）  
+- `dsh-home/` — 官方 harness 状态  
+
+`run.sh` 会在缺失时生成 `session.secret`，并从 dsh 日志行 `dsh web: ...?token=` 写入 `dsh-launch.token`。
+
+## 联网搜索（匿名 MCP）
+
+官方 DeepSeek `web_search` 已在 `patches/vps.cordis.patch.yml` 中禁用，改用本地插件：
+
+- Host: `@local/dsh-web-search-anon-mcp`（provider id: `anon-mcp`）
+- Settings UI: `@local/dsh-client-ui-settings-web-search-anon`
+
+**Endpoint 三选一**（Settings → Plugins → 联网搜索 / Web search）：
+
+| 值 | 后端 |
 |---|---|
-| `PUBLIC_HOST` | 公网 IP 或域名（必填，进 `--trusted-host` 与证书 CN/SAN） |
-| `HTTPS_PORT` | 默认 `8443` |
-| `DSH_PORT` | 官方 web 本地端口，默认 `3080` |
-| `DOCUMENTS_DIRECTORY` | 写入 cordis patch，默认 `/home/share` |
-| `NODE_MAX_OLD_SPACE_SIZE` | 默认 `256` |
-| `DEEPSEEK_API_KEY` | 可选；写入 `dsh-home/agnes.env` |
-| `AUTH_DIR` | 网关用户库与 session secret，默认 `./data/auth` |
+| `parallel`（默认） | Parallel Search MCP — `https://search.parallel.ai/mcp` |
+| `keenable` | Keenable MCP — `https://api.keenable.ai/mcp`（失败时 REST fallback） |
+| `youcom` | You.com Free MCP — `https://api.you.com/mcp?profile=free` |
 
-## systemd（可选）
+冒烟：`node plugins/web-search-anon-mcp/scripts/smoke-search.mjs "DeepSeek Harness"`
+
+## 认证冒烟（不启 dsh）
 
 ```bash
-sudo cp systemd/dsh-vps.service /etc/systemd/system/dsh-custom.service
-# 按实际 Install 路径改 WorkingDirectory / ExecStart
-sudo systemctl daemon-reload
-sudo systemctl enable --now dsh-custom
+node --test proxy/auth/__tests__/auth-smoke.test.mjs
 ```
 
-## 与「自研 runtime」的区别
+## 和之前错误方案的区别
 
-| | 本仓库 | 旧自研包 |
+| | 自写 Micro Harness | 本方案 |
 |---|---|---|
-| Agent | 官方 `@deepseek-ai/dsh` | 自写循环 |
-| UI | 官方 web client | 自研 |
-| 公网 | HTTPS 反代 + 网关账号 | 视实现 |
-| 工作区 | `/home/share`（共享） | 各异 |
+| Agent / 工具 / Session | 自研 | **官方 Cordis 插件树** |
+| 前端 | 自写 HTML | **官方 `dsh web`** |
+| 本仓库代码 | 整套 runtime | install / HTTPS 反代 + 认证门禁 / 小 patch |
+
+## 内存说明
+
+- 磁盘：`node_modules` 约 400MB（正常）  
+- 运行：heap 上限默认 256MB；总 RSS 会话中会升高  
+- `patches/vps.cordis.patch.yml` 关掉 schedule / otel 等，可按需改回  
+- Agent 预设可在网页里选 **minimal**，比 standard 工具更少  
 
 ## License
 
-胶水脚本以仓库为准；DeepSeek Harness 遵循其上游许可证。
+胶水脚本 MIT。DeepSeek Harness 本身遵循其上游 MIT / 第三方声明。
