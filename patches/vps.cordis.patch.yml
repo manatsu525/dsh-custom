@@ -38,3 +38,8 @@
         endpoint: parallel
     - id: ui-settings-web-search-anon
       name: '@local/dsh-client-ui-settings-web-search-anon'
+
+# Keep browser dsh-auth cookie aligned with gateway login (1 year)
+- id: connection
+  config:
+    cookieMaxAgeDays: 365
