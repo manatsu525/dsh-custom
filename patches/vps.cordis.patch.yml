@@ -39,7 +39,10 @@
     - id: ui-settings-web-search-anon
       name: '@local/dsh-client-ui-settings-web-search-anon'
 
-# Keep browser dsh-auth cookie aligned with gateway login (1 year)
+# Keep browser dsh-auth cookie aligned with gateway login (1 year).
+# IMPORTANT: cordis entry patches REPLACE the whole `config` object, so we must
+# re-state trustedHosts or --trusted-host is wiped and every /api call returns 403.
 - id: connection
   config:
     cookieMaxAgeDays: 365
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
