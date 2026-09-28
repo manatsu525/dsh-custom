@@ -1,5 +1,5 @@
 [Unit]
-Description=Official DeepSeek Harness (dsh) behind HTTPS proxy
+Description=dsh-custom (official DeepSeek Harness behind HTTPS proxy)
 After=network.target
 
 [Service]
