@@ -87,12 +87,17 @@ DSH_PID=$!
 # Brief wait so first token line can appear before proxy starts exchanging
 sleep 1
 
-AUTH_DIR="$AUTH_DIR" \
-  DSH_TOKEN_FILE="$DSH_TOKEN_FILE" \
-  SESSION_SECRET_FILE="$SESSION_SECRET_FILE" \
-  HTTPS_PORT="$HTTPS_PORT" DSH_PORT="$DSH_PORT" \
-  TLS_CERT="$ROOT/data/cert.pem" TLS_KEY="$ROOT/data/key.pem" \
-  node "$ROOT/proxy/https-proxy.mjs" &
+# Export gateway env for https-proxy.mjs
+export AUTH_DIR DSH_TOKEN_FILE SESSION_SECRET_FILE HTTPS_PORT DSH_PORT
+export TLS_CERT="$ROOT/data/cert.pem"
+export TLS_KEY="$ROOT/data/key.pem"
+
+# Assemble https-proxy.mjs from parts if present (split for GitHub push size)
+if [[ -d "$ROOT/proxy/_parts" && -f "$ROOT/proxy/assemble-proxy.mjs" ]]; then
+  node "$ROOT/proxy/assemble-proxy.mjs" || true
+fi
+
+node "$ROOT/proxy/https-proxy.mjs" &
 PROXY_PID=$!
 
 echo "Official dsh web on 127.0.0.1:${DSH_PORT}"
