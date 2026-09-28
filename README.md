@@ -13,7 +13,66 @@
 
 不修改 `node_modules/@deepseek-ai/*` 源码。`config.env`、证书、`data/auth/*` 密钥与用户库请留在本机，勿提交。
 
-## 快速开始
+
+## Debian 11 一键部署 / 卸载
+
+面向 **Debian 11 (bullseye)**。可用 root 或带 sudo 的普通用户执行。无需 Docker。
+
+### 一键安装
+
+```bash
+# 推荐：从 GitHub 拉取并执行
+curl -fsSL https://raw.githubusercontent.com/manatsu525/dsh-custom/main/scripts/deploy-debian.sh | sudo bash
+
+# 或指定公网 IP / API Key
+PUBLIC_HOST=203.0.113.10 DEEPSEEK_API_KEY=sk-xxx \
+  curl -fsSL https://raw.githubusercontent.com/manatsu525/dsh-custom/main/scripts/deploy-debian.sh | sudo bash
+
+# 已克隆仓库时
+git clone https://github.com/manatsu525/dsh-custom.git
+cd dsh-custom
+sudo ./deploy.sh
+# 等价: sudo ./scripts/deploy-debian.sh
+```
+
+安装完成后：
+
+- 目录：`/opt/dsh-custom`（可用 `INSTALL_DIR` 覆盖）
+- 服务：`dsh-custom.service`（`systemctl status dsh-custom`）
+- 访问：`https://$PUBLIC_HOST:8443/` → 首次 **`/auth/setup`**
+
+常用环境变量 / 参数：
+
+| 变量 / 标志 | 说明 |
+|---|---|
+| `PUBLIC_HOST` | 公网 IP 或域名（未设时尝试 ifconfig.me / icanhazip / hostname -I） |
+| `INSTALL_DIR` | 默认 `/opt/dsh-custom` |
+| `HTTPS_PORT` | 默认 `8443` |
+| `SETUP_SWAP` | `0`/`1`；内存 < 1G 时默认 `1` |
+| `DEEPSEEK_API_KEY` | 可选，写入 `config.env` |
+| `--non-interactive` / `NONINTERACTIVE=1` | 无提示 |
+
+### 一键卸载
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/manatsu525/dsh-custom/main/scripts/uninstall-debian.sh | sudo bash -s -- --yes
+
+# 或本地
+sudo ./uninstall.sh --yes
+# 等价: sudo ./scripts/uninstall-debian.sh --yes
+```
+
+默认会停止并删除服务与 `/opt/dsh-custom`，**保留** `/home/share` 与 `/var/lib/dsh`：
+
+| 标志 | 作用 |
+|---|---|
+| `--yes` / `NONINTERACTIVE=1` | 跳过确认 |
+| `PURGE_SHARE=1` / `--purge-share` | 同时删除 `/home/share` |
+| `PURGE_DSH_HOME=1` / `--purge-dsh-home` | 同时删除 `/var/lib/dsh` |
+
+### 手动步骤（同上，拆开跑）
+
+## 快速开始（手动）
 
 ```bash
 sudo mkdir -p /opt && sudo tar xzf dsh-custom.tar.gz -C /opt
