@@ -40,6 +40,8 @@
       name: '@local/dsh-client-ui-settings-web-search-anon'
     - id: vps-owns-host
       name: '@local/dsh-vps-owns-host'
+    - id: vps-mobile-settings
+      name: '@local/dsh-vps-mobile-settings'
 
 # Keep browser dsh-auth cookie aligned with gateway login (1 year).
 # IMPORTANT: cordis entry patches REPLACE the whole `config` object, so we must

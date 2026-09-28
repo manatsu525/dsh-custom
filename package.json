@@ -9,6 +9,7 @@
     "@deepseek-ai/dsh": "0.1.7-rc.2",
     "@local/dsh-web-search-anon-mcp": "file:./plugins/web-search-anon-mcp",
     "@local/dsh-client-ui-settings-web-search-anon": "file:./plugins/client-ui-settings-web-search-anon",
-    "@local/dsh-vps-owns-host": "file:./plugins/vps-owns-host"
+    "@local/dsh-vps-owns-host": "file:./plugins/vps-owns-host",
+    "@local/dsh-vps-mobile-settings": "file:./plugins/vps-mobile-settings"
   }
 }
