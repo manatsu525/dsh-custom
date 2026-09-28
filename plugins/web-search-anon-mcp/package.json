@@ -1,0 +1,17 @@
+{
+  "name": "@local/dsh-web-search-anon-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Anonymous MCP web-search provider (Parallel / Keenable / You.com) for DeepSeek Harness ctx.web",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-web": "*",
+    "@deepseek-ai/schemastery": "*"
+  }
+}
