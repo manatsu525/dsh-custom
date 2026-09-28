@@ -1,0 +1,63 @@
+ge}`)
+      }
+    }
+  },
+)
+
+server.on('upgrade', (req, socket, head) => {
+  // WebSocket: require gateway session before upstream
+  if (!store.hasUsers() || !requireSession(req)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n')
+    socket.destroy()
+    return
+  }
+
+  const headers = forwardHeaders(req.headers)
+  for (const k of [
+    'connection',
+    'upgrade',
+    'sec-websocket-key',
+    'sec-websocket-version',
+    'sec-websocket-protocol',
+    'sec-websocket-extensions',
+  ]) {
+    const v = req.headers[k]
+    if (v != null) headers[k] = v
+  }
+
+  // If browser lacks dsh cookie, inject launch token into WS path when possible
+  let url = req.url || '/'
+  if (!browserHasDshAuthCookie(req.headers.cookie)) {
+    const launch = readLaunchToken()
+    if (launch) {
+      try {
+        const u = new URL(url, 'http://dsh.invalid')
+        if (!u.searchParams.has('token')) u.searchParams.set('token', launch)
+        url = u.pathname + u.search
+      } catch {
+        /* keep url */
+      }
+    }
+  }
+
+  const upstream = net.connect(targetPort, targetHost)
+  upstream.on('connect', () => {
+    upstream.write(`${req.method} ${url} HTTP/1.1\r\n`)
+    for (const [k, v] of Object.entries(headers)) {
+      if (Array.isArray(v)) for (const item of v) upstream.write(`${k}: ${item}\r\n`)
+      else upstream.write(`${k}: ${v}\r\n`)
+    }
+    upstream.write('\r\n')
+    if (head?.length) upstream.write(head)
+    socket.pipe(upstream).pipe(socket)
+  })
+  upstream.on('error', () => socket.destroy())
+  socket.on('error', () => upstream.destroy())
+})
+
+server.listen(listenPort, listenHost, () => {
+  console.log(
+    `https-proxy+auth listening https://${listenHost}:${listenPort} -> http://${targetHost}:${targetPort}`,
+  )
+  console.log(`auth: setup/login at /auth/setup /auth/login ; admin at /auth/admin`)
+})
