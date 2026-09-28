@@ -1,0 +1,91 @@
+tup' ||
+    pathname === '/auth/logout' ||
+    pathname.startsWith('/auth/static/')
+  )
+}
+
+async function handleAuth(req, res) {
+  const pathname = pathnameOf(req)
+  const method = req.method || 'GET'
+
+  // --- setup ---
+  if (pathname === '/auth/setup') {
+    if (store.hasUsers()) {
+      return redirect(res, '/auth/login')
+    }
+    if (method === 'GET') {
+      return sendHtml(res, 200, setupPage())
+    }
+    if (method === 'POST') {
+      try {
+        const form = parseForm(await readBody(req))
+        if (form.password !== form.password2) {
+          return sendHtml(res, 400, setupPage({ error: '两次密码不一致', username: form.username || '' }))
+        }
+        const admin = await store.createAdmin(form.username, form.password)
+        const token = createSessionToken(admin, sessionSecret)
+        return redirect(res, '/auth/admin', { 'set-cookie': sessionSetCookie(token) })
+      } catch (err) {
+        return sendHtml(res, 400, setupPage({ error: err.message || '创建失败', username: '' }))
+      }
+    }
+    res.writeHead(405)
+    return res.end()
+  }
+
+  // --- login ---
+  if (pathname === '/auth/login') {
+    if (!store.hasUsers()) return redirect(res, '/auth/setup')
+    if (method === 'GET') {
+      const next = new URL(req.url || '/', 'https://gateway.local').searchParams.get('next') || '/'
+      return sendHtml(res, 200, loginPage({ next }))
+    }
+    if (method === 'POST') {
+      try {
+        const form = parseForm(await readBody(req))
+        const result = await store.authenticate(form.username, form.password)
+        if (!result.ok) {
+          const msg = result.reason === 'disabled' ? '账号已禁用' : '用户名或密码错误'
+          return sendHtml(res, 401, loginPage({ error: msg, username: form.username || '', next: form.next || '/' }))
+        }
+        const token = createSessionToken(result.user, sessionSecret)
+        let next = form.next || '/'
+        if (!next.startsWith('/') || next.startsWith('//')) next = '/'
+        return redirect(res, next, { 'set-cookie': sessionSetCookie(token) })
+      } catch (err) {
+        return sendHtml(res, 500, loginPage({ error: err.message || '登录失败' }))
+      }
+    }
+    res.writeHead(405)
+    return res.end()
+  }
+
+  // --- logout ---
+  if (pathname === '/auth/logout' && (method === 'POST' || method === 'GET')) {
+    const clears = [sessionClearCookie(), ...clearDshAuthCookies(req)]
+    return redirect(res, '/auth/login', { 'set-cookie': clears })
+  }
+
+  // --- admin UI + actions ---
+  if (pathname === '/auth/admin' || pathname.startsWith('/auth/admin/')) {
+    const auth = requireSession(req)
+    if (!auth) return redirect(res, '/auth/login?next=/auth/admin')
+    if (auth.user.role !== 'admin') {
+      return sendHtml(res, 403, loginPage({ error: '需要管理员权限' }))
+    }
+
+    if (pathname === '/auth/admin' && method === 'GET') {
+      return sendHtml(res, 200, adminPage({ users: store.listUsers(), me: auth.user.username }))
+    }
+
+    const renderAdmin = (opts) => sendHtml(res, opts.status || 200, adminPage({ users: store.listUsers(), me: auth.user.username, ...opts }))
+
+    try {
+      if (pathname === '/auth/admin/create' && method === 'POST') {
+        const form = parseForm(await readBody(req))
+        await store.createUser({ username: form.username, password: form.password, role: form.role || 'user' })
+        return redirect(res, '/auth/admin')
+      }
+      if (pathname === '/auth/admin/toggle' && method === 'POST') {
+        const form = parseForm(await readBody(req))
+        store.setDisabled(fo

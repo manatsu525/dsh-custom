@@ -1,0 +1,83 @@
+rm.username, form.disabled === '1')
+        return redirect(res, '/auth/admin')
+      }
+      if (pathname === '/auth/admin/reset' && method === 'POST') {
+        const form = parseForm(await readBody(req))
+        await store.setPassword(form.username, form.password)
+        return redirect(res, '/auth/admin')
+      }
+      if (pathname === '/auth/admin/delete' && method === 'POST') {
+        const form = parseForm(await readBody(req))
+        store.deleteUser(form.username)
+        return redirect(res, '/auth/admin')
+      }
+      // JSON API for tests / automation
+      if (pathname === '/auth/api/users' && method === 'GET') {
+        return sendJson(res, 200, { users: store.listUsers() })
+      }
+      if (pathname === '/auth/api/users' && method === 'POST') {
+        const body = JSON.parse((await readBody(req)).toString('utf8') || '{}')
+        const user = await store.createUser(body)
+        return sendJson(res, 201, { user })
+      }
+    } catch (err) {
+      const code = err.code === 'VALIDATION' || err.code === 'EXISTS' || err.code === 'LAST_ADMIN' || err.code === 'NOT_FOUND' ? 400 : 500
+      if (pathname.startsWith('/auth/api/')) {
+        return sendJson(res, code, { error: err.message })
+      }
+      return renderAdmin({ error: err.message, status: code })
+    }
+
+    res.writeHead(404)
+    return res.end('not found')
+  }
+
+  // JSON API under /auth/api/* (admin only) — list already handled above for admin path; handle non-admin here
+  if (pathname.startsWith('/auth/api/')) {
+    const auth = requireSession(req)
+    if (!auth) return sendJson(res, 401, { error: 'unauthorized' })
+    if (auth.user.role !== 'admin') return sendJson(res, 403, { error: 'forbidden' })
+    try {
+      if (pathname === '/auth/api/users' && method === 'GET') {
+        return sendJson(res, 200, { users: store.listUsers() })
+      }
+      if (pathname === '/auth/api/users' && method === 'POST') {
+        const body = JSON.parse((await readBody(req)).toString('utf8') || '{}')
+        const user = await store.createUser(body)
+        return sendJson(res, 201, { user })
+      }
+      const m = pathname.match(/^\/auth\/api\/users\/([^/]+)$/)
+      if (m) {
+        const username = decodeURIComponent(m[1])
+        if (method === 'PATCH') {
+          const body = JSON.parse((await readBody(req)).toString('utf8') || '{}')
+          let user = null
+          if (typeof body.disabled === 'boolean') user = store.setDisabled(username, body.disabled)
+          if (typeof body.password === 'string') user = await store.setPassword(username, body.password)
+          return sendJson(res, 200, { user: user || store.findUser(username) && { username, ...(store.listUsers().find((u) => u.username === username) || {}) } })
+        }
+        if (method === 'DELETE') {
+          store.deleteUser(username)
+          return sendJson(res, 200, { ok: true })
+        }
+      }
+      return sendJson(res, 404, { error: 'not found' })
+    } catch (err) {
+      const code = err.code === 'VALIDATION' || err.code === 'EXISTS' || err.code === 'LAST_ADMIN' || err.code === 'NOT_FOUND' ? 400 : 500
+      return sendJson(res, code, { error: err.message })
+    }
+  }
+
+  res.writeHead(404)
+  res.end('not found')
+}
+
+function stripTokenFromUrl(url) {
+  try {
+    const u = new URL(url, 'https://gateway.local')
+    if (u.searchParams.has('token')) {
+      u.searchParams.delete('token')
+      const q = u.searchParams.toString()
+      return u.pathname + (q ? `?${q}` : '') + (u.hash || '')
+    }
+  

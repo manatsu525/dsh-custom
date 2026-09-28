@@ -1,0 +1,109 @@
+} catch {
+    /* ignore */
+  }
+  return url
+}
+
+/**
+ * If the browser lacks a dsh-auth-* cookie (expired or first visit after login),
+ * re-exchange the process launch token while the gateway session is still valid.
+ * Official dsh cookie Max-Age is shorter than our 1y gate session and we do not
+ * patch @deepseek-ai; transparent re-exchange keeps the user logged in for a year.
+ */
+async function ensureDshCookie(req, res) {
+  if (browserHasDshAuthCookie(req.headers.cookie)) return { cookies: [] }
+  const launch = readLaunchToken()
+  if (!launch) return { cookies: [], warning: 'no_launch_token' }
+  const hostHeader = req.headers.host
+  if (!hostHeader) return { cookies: [], warning: 'no_host' }
+  const result = await exchangeDshToken({
+    targetHost,
+    targetPort,
+    hostHeader,
+    launchToken: launch,
+  })
+  if (result.error || !result.setCookies?.length) {
+    return { cookies: [], warning: result.error || `exchange_status_${result.statusCode}` }
+  }
+  return { cookies: result.setCookies }
+}
+
+function proxyHttp(req, res, { extraSetCookies = [], rewriteUrl = null } = {}) {
+  const headers = forwardHeaders(req.headers)
+  const path = rewriteUrl || req.url
+  const upstream = http.request(
+    {
+      host: targetHost,
+      port: targetPort,
+      method: req.method,
+      path,
+      headers,
+      agent: false,
+    },
+    (up) => {
+      const outHeaders = { ...up.headers }
+      if (extraSetCookies.length) {
+        const existing = outHeaders['set-cookie']
+        const list = Array.isArray(existing) ? existing.slice() : existing ? [existing] : []
+        list.push(...extraSetCookies)
+        outHeaders['set-cookie'] = list
+      }
+      res.writeHead(up.statusCode || 502, outHeaders)
+      up.pipe(res)
+    },
+  )
+  upstream.on('error', (err) => {
+    if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain' })
+    res.end(`bad gateway: ${err.message}`)
+  })
+  req.pipe(upstream)
+}
+
+const server = https.createServer(
+  {
+    cert: fs.readFileSync(cert),
+    key: fs.readFileSync(key),
+    minVersion: 'TLSv1.2',
+  },
+  async (req, res) => {
+    try {
+      const pathname = pathnameOf(req)
+
+      // Auth routes never hit dsh
+      if (pathname.startsWith('/auth/')) {
+        return await handleAuth(req, res)
+      }
+
+      // First-run / login gate
+      if (!store.hasUsers()) {
+        return redirect(res, '/auth/setup')
+      }
+      const auth = requireSession(req)
+      if (!auth) {
+        const next = encodeURIComponent(req.url || '/')
+        return redirect(res, `/auth/login?next=${next}`)
+      }
+
+      // Strip raw dsh ?token= from browser URLs (users should not need it)
+      const cleaned = stripTokenFromUrl(req.url || '/')
+      const needsRewrite = cleaned !== (req.url || '/')
+
+      // Exchange launch token → dsh-auth cookie when missing
+      let extraSetCookies = []
+      const accept = req.headers.accept || ''
+      const isHtmlNav =
+        (req.method === 'GET' || req.method === 'HEAD') &&
+        (pathname === '/' || accept.includes('text/html'))
+      if (isHtmlNav || !browserHasDshAuthCookie(req.headers.cookie)) {
+        const exchanged = await ensureDshCookie(req, res)
+        extraSetCookies = exchanged.cookies || []
+      }
+
+      return proxyHttp(req, res, {
+        extraSetCookies,
+        rewriteUrl: needsRewrite ? cleaned : null,
+      })
+    } catch (err) {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'content-type': 'text/plain' })
+        res.end(`gateway error: ${err.messa

@@ -92,9 +92,14 @@ export AUTH_DIR DSH_TOKEN_FILE SESSION_SECRET_FILE HTTPS_PORT DSH_PORT
 export TLS_CERT="$ROOT/data/cert.pem"
 export TLS_KEY="$ROOT/data/key.pem"
 
-# Assemble https-proxy.mjs from parts if present (split for GitHub push size)
+# Assemble https-proxy.mjs from parts only when all shards exist (avoid truncated overwrite)
 if [[ -d "$ROOT/proxy/_parts" && -f "$ROOT/proxy/assemble-proxy.mjs" ]]; then
-  node "$ROOT/proxy/assemble-proxy.mjs" || true
+  part_count=$(find "$ROOT/proxy/_parts" -maxdepth 1 -name "https-proxy.*.txt" | wc -l)
+  if [[ "$part_count" -ge 5 ]]; then
+    node "$ROOT/proxy/assemble-proxy.mjs" || true
+  else
+    echo "[run.sh] skip assemble-proxy: found $part_count parts (need 5); keeping existing https-proxy.mjs" >&2
+  fi
 fi
 
 node "$ROOT/proxy/https-proxy.mjs" &
