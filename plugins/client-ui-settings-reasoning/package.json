@@ -10,6 +10,10 @@
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },
+  "scripts": {
+    "prepare": "node ./scripts/assemble-client.mjs",
+    "assemble": "node ./scripts/assemble-client.mjs"
+  },
   "dsh": {
     "client": {
       "inject": [
