@@ -11,6 +11,7 @@
     "@local/dsh-client-ui-settings-web-search-anon": "file:./plugins/client-ui-settings-web-search-anon",
     "@local/dsh-vps-owns-host": "file:./plugins/vps-owns-host",
     "@local/dsh-vps-mobile-settings": "file:./plugins/vps-mobile-settings",
-    "@local/dsh-vps-delete-session": "file:./plugins/vps-delete-session"
+    "@local/dsh-vps-delete-session": "file:./plugins/vps-delete-session",
+    "@local/dsh-client-ui-settings-reasoning": "file:./plugins/client-ui-settings-reasoning"
   }
 }

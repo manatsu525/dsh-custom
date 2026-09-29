@@ -1,0 +1,29 @@
+{
+  "name": "@local/dsh-client-ui-settings-reasoning",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Settings → Models UI to configure reasoningEfforts for any custom / OpenAI-compatible model so composer shows 推理等级",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-models",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-llm"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4"
+  }
+}
