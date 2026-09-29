@@ -25,12 +25,12 @@ jobs:
           PY
           base64 -d plugins/client-ui-settings-reasoning/lib/client.js.gz.b64 | gzip -t
           git update-index --chmod=+x deploy.sh uninstall.sh scripts/*.sh
+          git add -A
           if git diff --cached --quiet; then
             echo "No repair changes needed"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add plugins/client-ui-settings-reasoning/lib/client.js.gz.b64
           git commit -m "fix: repair reasoning client bundle"
           git push origin HEAD:main
